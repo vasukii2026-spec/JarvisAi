@@ -19,7 +19,7 @@ Make each version read naturally for its platform, not just a trimmed copy of an
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [{ role: "system", content: system }, { role: "user", content: user }],
         temperature: 0.7,
       }),
