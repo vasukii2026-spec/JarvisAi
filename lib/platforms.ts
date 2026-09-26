@@ -31,7 +31,8 @@ export async function postMastodon(status: string, imageUrl: string) {
 
   const imgRes = await fetch(imageUrl);
   if (!imgRes.ok) throw new Error("Could not fetch the generated image");
-  const blob = await imgRes.blob();
+  const bytes = await imgRes.arrayBuffer();
+  const blob = new Blob([bytes], { type: "image/png" });
   const form = new FormData();
   form.append("file", blob, "vasukii-post.png");
 
