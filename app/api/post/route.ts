@@ -10,7 +10,8 @@ export async function POST(req: Request) {
 
   const origin = new URL(req.url).origin;
   const imgUrl = `${origin}/api/og?title=${encodeURIComponent(image.title || "Vasukii")}` +
-    `&subtitle=${encodeURIComponent(image.subtitle || "")}&tag=${encodeURIComponent(image.tag || "")}`;
+    `&subtitle=${encodeURIComponent(image.subtitle || "")}&tag=${encodeURIComponent(image.tag || "")}` +
+    `&style=${encodeURIComponent(image.style || "bottts")}`;
 
   const results: Record<string, string> = {};
   await Promise.all(

@@ -10,11 +10,14 @@ const box: React.CSSProperties = { width: "100%", padding: 10, borderRadius: 8, 
 const btn: React.CSSProperties = { padding: "10px 18px", borderRadius: 8, border: "none", background: "#38bdf8",
   color: "#0b1220", fontWeight: 700, cursor: "pointer" };
 
+const STYLES = ["bottts", "adventurer", "big-smile", "fun-emoji", "thumbs", "shapes", "rings"];
+
 export default function Home() {
   const [topic, setTopic] = useState("");
   const [details, setDetails] = useState("");
   const [link, setLink] = useState("");
   const [hashtags, setHashtags] = useState("#Vasukii");
+  const [style, setStyle] = useState("bottts");
   const [texts, setTexts] = useState<Record<Platform, string> | null>(null);
   const [selected, setSelected] = useState<Platform[]>([...PLATFORMS]);
   const [loading, setLoading] = useState<"" | "gen" | "post">("");
@@ -23,7 +26,7 @@ export default function Home() {
 
   const imgTitle = topic || "Vasukii";
   const imgSubtitle = details.slice(0, 100);
-  const imgUrl = `/api/og?title=${encodeURIComponent(imgTitle)}&subtitle=${encodeURIComponent(imgSubtitle)}&tag=${encodeURIComponent(hashtags)}`;
+  const imgUrl = `/api/og?title=${encodeURIComponent(imgTitle)}&subtitle=${encodeURIComponent(imgSubtitle)}&tag=${encodeURIComponent(hashtags)}&style=${style}`;
 
   async function generate() {
     setLoading("gen"); setError(""); setResults(null);
@@ -45,7 +48,7 @@ export default function Home() {
     try {
       const r = await fetch("/api/post", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: selected, texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags } }),
+        body: JSON.stringify({ platforms: selected, texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, style } }),
       });
       setResults(await r.json());
     } catch (e: any) { setError(e.message); }
@@ -71,6 +74,13 @@ export default function Home() {
 
       <label>Hashtags</label>
       <input style={box} value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
+
+      <label>Mascot style</label>
+      <select style={box} value={style} onChange={(e) => setStyle(e.target.value)}>
+        {STYLES.map((s) => (
+          <option key={s} value={s}>{s}</option>
+        ))}
+      </select>
 
       <button style={{ ...btn, opacity: !topic || loading ? 0.6 : 1 }} onClick={generate} disabled={!topic || !!loading}>
         {loading === "gen" ? "Writing..." : "Generate paragraph + image"}
