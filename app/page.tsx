@@ -4,36 +4,45 @@ import { useState } from "react";
 const PLATFORMS = ["mastodon", "bluesky", "discord", "telegram"] as const;
 type Platform = (typeof PLATFORMS)[number];
 const LIMITS: Record<Platform, number> = { bluesky: 300, mastodon: 500, discord: 2000, telegram: 1024 };
+const LANGUAGES = ["English", "Hindi", "Spanish", "French", "German", "Portuguese", "Japanese", "Arabic"];
+const LAYOUTS = [
+  { id: "classic", label: "Classic (text left, logo right)" },
+  { id: "banner", label: "Banner (big centered logo + headline)" },
+  { id: "quote", label: "Quote (punchy statement, small badge)" },
+];
 
 const box: React.CSSProperties = { width: "100%", padding: 10, borderRadius: 8, border: "1px solid #334155",
   background: "#111827", color: "#e2e8f0", marginTop: 6, marginBottom: 16, fontSize: 14 };
 const btn: React.CSSProperties = { padding: "10px 18px", borderRadius: 8, border: "none", background: "#38bdf8",
   color: "#0b1220", fontWeight: 700, cursor: "pointer" };
-
-const STYLES = ["bottts", "adventurer", "big-smile", "fun-emoji", "thumbs", "shapes", "rings"];
+const btnGhost: React.CSSProperties = { ...btn, background: "#1e293b", color: "#e2e8f0", border: "1px solid #334155" };
+const btnSmall: React.CSSProperties = { ...btnGhost, padding: "4px 10px", fontSize: 12, fontWeight: 500 };
 
 export default function Home() {
   const [topic, setTopic] = useState("");
   const [details, setDetails] = useState("");
   const [link, setLink] = useState("");
   const [hashtags, setHashtags] = useState("#Vasukii");
-  const [style, setStyle] = useState("bottts");
+  const [language, setLanguage] = useState("English");
+  const [layout, setLayout] = useState("classic");
   const [texts, setTexts] = useState<Record<Platform, string> | null>(null);
   const [selected, setSelected] = useState<Platform[]>([...PLATFORMS]);
   const [loading, setLoading] = useState<"" | "gen" | "post">("");
   const [error, setError] = useState("");
   const [results, setResults] = useState<Record<string, string> | null>(null);
+  const [copied, setCopied] = useState<Platform | null>(null);
 
   const imgTitle = topic || "Vasukii";
   const imgSubtitle = details.slice(0, 100);
-  const imgUrl = `/api/og?title=${encodeURIComponent(imgTitle)}&subtitle=${encodeURIComponent(imgSubtitle)}&tag=${encodeURIComponent(hashtags)}&style=${style}`;
+  const imgUrl = `/api/og?title=${encodeURIComponent(imgTitle)}&subtitle=${encodeURIComponent(imgSubtitle)}` +
+    `&tag=${encodeURIComponent(hashtags)}&layout=${layout}`;
 
   async function generate() {
     setLoading("gen"); setError(""); setResults(null);
     try {
       const r = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, details, link, hashtags }),
+        body: JSON.stringify({ topic, details, link, hashtags, language }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Generation failed");
@@ -48,11 +57,20 @@ export default function Home() {
     try {
       const r = await fetch("/api/post", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: selected, texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, style } }),
+        body: JSON.stringify({ platforms: selected, texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, layout } }),
       });
       setResults(await r.json());
     } catch (e: any) { setError(e.message); }
     setLoading("");
+  }
+
+  async function copyText(p: Platform) {
+    if (!texts) return;
+    try {
+      await navigator.clipboard.writeText(texts[p]);
+      setCopied(p);
+      setTimeout(() => setCopied(null), 1500);
+    } catch { setError("Could not copy - your browser may have blocked clipboard access."); }
   }
 
   const toggle = (p: Platform) => setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
@@ -75,12 +93,20 @@ export default function Home() {
       <label>Hashtags</label>
       <input style={box} value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
 
-      <label>Mascot style</label>
-      <select style={box} value={style} onChange={(e) => setStyle(e.target.value)}>
-        {STYLES.map((s) => (
-          <option key={s} value={s}>{s}</option>
-        ))}
-      </select>
+      <div style={{ display: "flex", gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <label>Language</label>
+          <select style={box} value={language} onChange={(e) => setLanguage(e.target.value)}>
+            {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label>Image layout</label>
+          <select style={box} value={layout} onChange={(e) => setLayout(e.target.value)}>
+            {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+          </select>
+        </div>
+      </div>
 
       <button style={{ ...btn, opacity: !topic || loading ? 0.6 : 1 }} onClick={generate} disabled={!topic || !!loading}>
         {loading === "gen" ? "Writing..." : "Generate paragraph + image"}
@@ -92,6 +118,10 @@ export default function Home() {
         <div style={{ marginTop: 32 }}>
           <img src={imgUrl} alt="preview" style={{ width: "100%", borderRadius: 10, border: "1px solid #334155" }} />
 
+          <button style={{ ...btnGhost, marginTop: 14 }} onClick={generate} disabled={!!loading}>
+            {loading === "gen" ? "Writing..." : "🔁 Regenerate wording"}
+          </button>
+
           {PLATFORMS.map((p) => (
             <div key={p} style={{ marginTop: 18, padding: 14, border: "1px solid #334155", borderRadius: 10 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, textTransform: "capitalize" }}>
@@ -100,8 +130,11 @@ export default function Home() {
                   {texts[p].length}/{LIMITS[p]}
                 </span>
               </label>
-              <textarea style={{ ...box, marginBottom: 0 }} rows={3} value={texts[p]}
+              <textarea style={{ ...box, marginBottom: 6 }} rows={3} value={texts[p]}
                 onChange={(e) => setTexts({ ...texts, [p]: e.target.value })} />
+              <button style={btnSmall} onClick={() => copyText(p)}>
+                {copied === p ? "✅ Copied" : "📋 Copy text"}
+              </button>
             </div>
           ))}
 

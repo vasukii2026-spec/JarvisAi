@@ -1,12 +1,14 @@
 export async function POST(req: Request) {
-  const { topic, details, link, hashtags } = await req.json();
+  const { topic, details, link, hashtags, language } = await req.json();
   const key = process.env.GROQ_API_KEY;
   if (!key) return Response.json({ error: "GROQ_API_KEY is not set in Vercel environment variables." }, { status: 500 });
   if (!topic || !String(topic).trim()) return Response.json({ error: "Please describe what you're announcing." }, { status: 400 });
 
+  const lang = (language || "English").trim();
   const system = `You write short marketing social media posts for a product called Vasukii.
 Tone: confident, clear, friendly. No hype words like "revolutionary" or "game-changing". Always end with a short call to action.
 Weave in the link and hashtags naturally if given, otherwise omit them.
+Write every post in ${lang}. Keep hashtags and the link as given, don't translate those, but the surrounding sentences must be in ${lang}.
 Respond with ONLY raw JSON, no markdown fences, no extra text, in exactly this shape:
 {"mastodon":"...","bluesky":"...","discord":"...","telegram":"..."}
 Hard character limits you must respect: bluesky <= 260, mastodon <= 450, discord <= 800, telegram <= 800.
