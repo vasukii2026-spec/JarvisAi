@@ -16,15 +16,17 @@ export async function GET(req: Request) {
   const tag = (searchParams.get("tag") || "").slice(0, 60);
   const layout = searchParams.get("layout") || "classic";
   const mascotStyle = searchParams.get("style") || "bottts";
+  const link = (searchParams.get("link") || "").slice(0, 300);
   const origin = new URL(req.url).origin;
   const logoUrl = `${origin}/logo.png`; // served from /public/logo.png
   // Auto-generated character avatar (DiceBear - free, keyless, not AI). Same title = same character.
   const avatarUrl = `https://api.dicebear.com/10.x/${mascotStyle}/png?seed=${encodeURIComponent(title)}&size=340&backgroundColor=1a0d00,000000&backgroundType=gradientLinear`;
+  // Free, keyless QR generator (goqr.me) - only shown when a link was given.
+  const qrUrl = link ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&data=${encodeURIComponent(link)}` : "";
 
   let content;
 
   if (layout === "mascot") {
-    // Auto-generated character avatar instead of the fixed logo - variety on demand
     content = (
       <div style={{
         height: "100%", width: "100%", display: "flex", alignItems: "center",
@@ -40,7 +42,6 @@ export async function GET(req: Request) {
       </div>
     );
   } else if (layout === "banner") {
-    // Big centered logo up top, headline below - good for major announcements
     content = (
       <div style={{
         height: "100%", width: "100%", display: "flex", flexDirection: "column",
@@ -60,7 +61,6 @@ export async function GET(req: Request) {
       </div>
     );
   } else if (layout === "quote") {
-    // Large centered statement, small logo badge in the corner - good for a punchy one-liner
     content = (
       <div style={{
         height: "100%", width: "100%", display: "flex", flexDirection: "column",
@@ -82,7 +82,6 @@ export async function GET(req: Request) {
       </div>
     );
   } else {
-    // "classic": text left, logo right - the original default layout
     content = (
       <div style={{
         height: "100%", width: "100%", display: "flex", alignItems: "center",
@@ -100,5 +99,21 @@ export async function GET(req: Request) {
     );
   }
 
-  return new ImageResponse(content, { width: 1200, height: 630 });
+  // Wrap everything in a frame so a QR code can float in the bottom-left corner on top,
+  // without disturbing each layout's own internal design.
+  const framed = (
+    <div style={{ display: "flex", position: "relative", width: "100%", height: "100%" }}>
+      {content}
+      {qrUrl && (
+        <div style={{
+          display: "flex", position: "absolute", left: 36, bottom: 36,
+          background: "white", padding: 10, borderRadius: 12,
+        }}>
+          <img src={qrUrl} width={100} height={100} />
+        </div>
+      )}
+    </div>
+  );
+
+  return new ImageResponse(framed, { width: 1200, height: 630 });
 }
