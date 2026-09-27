@@ -9,7 +9,9 @@ const LAYOUTS = [
   { id: "classic", label: "Classic (text left, logo right)" },
   { id: "banner", label: "Banner (big centered logo + headline)" },
   { id: "quote", label: "Quote (punchy statement, small badge)" },
+  { id: "mascot", label: "Mascot (auto-generated character avatar)" },
 ];
+const MASCOT_STYLES = ["bottts", "adventurer", "big-smile", "fun-emoji", "thumbs", "shapes", "rings"];
 
 const box: React.CSSProperties = { width: "100%", padding: 10, borderRadius: 8, border: "1px solid #334155",
   background: "#111827", color: "#e2e8f0", marginTop: 6, marginBottom: 16, fontSize: 14 };
@@ -25,6 +27,7 @@ export default function Home() {
   const [hashtags, setHashtags] = useState("#Vasukii");
   const [language, setLanguage] = useState("English");
   const [layout, setLayout] = useState("classic");
+  const [mascotStyle, setMascotStyle] = useState("bottts");
   const [texts, setTexts] = useState<Record<Platform, string> | null>(null);
   const [selected, setSelected] = useState<Platform[]>([...PLATFORMS]);
   const [loading, setLoading] = useState<"" | "gen" | "post">("");
@@ -35,7 +38,7 @@ export default function Home() {
   const imgTitle = topic || "Vasukii";
   const imgSubtitle = details.slice(0, 100);
   const imgUrl = `/api/og?title=${encodeURIComponent(imgTitle)}&subtitle=${encodeURIComponent(imgSubtitle)}` +
-    `&tag=${encodeURIComponent(hashtags)}&layout=${layout}`;
+    `&tag=${encodeURIComponent(hashtags)}&layout=${layout}&style=${mascotStyle}`;
 
   async function generate() {
     setLoading("gen"); setError(""); setResults(null);
@@ -57,7 +60,7 @@ export default function Home() {
     try {
       const r = await fetch("/api/post", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: selected, texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, layout } }),
+        body: JSON.stringify({ platforms: selected, texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, layout, style: mascotStyle } }),
       });
       setResults(await r.json());
     } catch (e: any) { setError(e.message); }
@@ -107,6 +110,15 @@ export default function Home() {
           </select>
         </div>
       </div>
+
+      {layout === "mascot" && (
+        <>
+          <label>Mascot style</label>
+          <select style={box} value={mascotStyle} onChange={(e) => setMascotStyle(e.target.value)}>
+            {MASCOT_STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </>
+      )}
 
       <button style={{ ...btn, opacity: !topic || loading ? 0.6 : 1 }} onClick={generate} disabled={!topic || !!loading}>
         {loading === "gen" ? "Writing..." : "Generate paragraph + image"}
