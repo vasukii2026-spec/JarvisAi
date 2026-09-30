@@ -61,16 +61,18 @@ the link, which isn't recommended.
 
 ## Files
 
-- `middleware.ts` – the password check (leaves `/api/og` and `/api/og-gif` public)
+- `middleware.ts` – the password check (leaves `/api/og` and `/api/auto-post` public - they have their own protection)
 - `app/page.tsx` – the page you use: single post or batch mode, hashtag suggestions, shorten-to-fit
 - `app/api/generate/route.ts` – asks Groq for the four paragraphs, in your chosen language
 - `app/api/hashtags/route.ts` – asks Groq for relevant hashtag suggestions
 - `app/api/shorten/route.ts` – asks Groq to rewrite a post under a platform's character limit
-- `app/api/og/route.tsx` – draws the static branded image (used as the Bluesky fallback)
-- `app/api/og-gif/route.tsx` – draws the animated version (used for Discord/Telegram/Mastodon)
-- `app/api/post/route.ts` – posts to whichever platforms you approved
+- `app/api/og/route.tsx` – draws the branded image (logo or mascot, 4 layouts, optional QR code)
+- `app/api/post/route.ts` – posts to whichever platforms you approved (manual flow)
+- `app/api/auto-post/route.ts` – picks a topic and posts automatically to all 4 platforms, unsupervised
+- `lib/generateTexts.ts` – the shared Groq call used by both manual and automatic posting
+- `lib/topics.ts` – the rotating list of topics automatic posts draw from - edit this to change what it talks about
 - `lib/platforms.ts` – the actual API calls to Discord/Telegram/Mastodon/Bluesky
-- `lib/postAll.ts` – shared posting logic, decides which image (static or animated) each platform gets
+- `lib/postAll.ts` – shared posting logic
 - `public/logo.png` – your Vasukii logo, shown in every generated image
 
 ## Extra features
@@ -79,8 +81,34 @@ the link, which isn't recommended.
 - **Shorten to fit**: if a platform's text goes over its character limit, a "✂️ Shorten to fit" button appears under that box.
 - **QR code**: fill in the Link field and every generated image automatically gets a small scannable QR code in the bottom-left corner, linking there.
 - **Batch mode**: tick "Batch mode" to type several topics (one per line) and generate all of them at once. Review and edit each one, then post them individually or all together.
-- **Animated image**: every generated image is a short looping animated GIF (a moving glow behind a gently pulsing logo), not a static picture.
-  - **Discord, Telegram, Mastodon**: all genuinely play the animation. Telegram uses its dedicated animation endpoint; Mastodon converts the GIF into a silent looping video on its own server (this takes a few seconds, which the app waits for automatically).
-  - **Bluesky**: does not reliably support animated GIFs today - this is a real, ongoing gap in Bluesky itself (their own official app doesn't fully support it either), not something this app can work around. Bluesky automatically receives the static (non-animated) version instead, so posting still works fine there.
-  - Generating the animation takes a few extra seconds compared to a plain image, since it's rendering and encoding around 14 frames.
+
+## Fully automatic posting (every 30 minutes, all 4 platforms)
+
+This posts for real with no human review step in between - read the safety note at the bottom of
+this section before turning it on.
+
+1. Set `VASUKII_WEBSITE` in Vercel to your real website - it's automatically included as the link
+   and QR code in every automatic post.
+2. Set `AUTO_POST_SECRET` to a random string you make up (e.g. run `openssl rand -hex 16`).
+3. **Test it safely first, without posting anything real**, by visiting this in your browser once deployed:
+   `https://your-app.vercel.app/api/auto-post?secret=YOUR_SECRET&dry=1`
+   This generates a topic, the text, and the image, and shows them back to you as JSON - it does
+   NOT post anywhere. Check the wording looks right before going further.
+4. When you're happy with it, go to cron-job.org (free, no card needed), sign up, and create a job
+   that calls this URL every 30 minutes: `https://your-app.vercel.app/api/auto-post?secret=YOUR_SECRET`
+   (no `&dry=1` this time - this one posts for real). When you create the job, set its schedule to
+   "every 30 minutes" (cron-job.org's free tier supports intervals down to 1 minute, so 30 is easy).
+5. A once-a-day Vercel Cron (`vercel.json`) is included as a harmless backup even without the
+   external pinger, but real 30-minute posting needs the pinger above (Vercel's free tier cron only
+   runs once a day).
+
+**What it posts about**: a rotating list of generic, safe topics in `lib/topics.ts` (community,
+the website, safety tips, engagement) - edit that file any time to change what it talks about. It
+deliberately avoids ever inventing prices, statistics, or guarantees, since nobody reviews it
+before it goes out.
+
+**⚠ Safety note**: once this is running, real posts go out automatically, unsupervised, to your
+real accounts, every 30 minutes - that's up to 48 posts a day, per platform. Check in on what it's
+actually posting every so often, especially in the first few hours. If anything looks off, you can
+pause it instantly by deleting the cron-job.org job (or pausing it there) - no code change needed.
 

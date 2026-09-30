@@ -24,7 +24,7 @@ const chip: React.CSSProperties = { ...btnSmall, borderRadius: 999, marginRight:
 type Texts = Record<Platform, string>;
 
 function imageUrlFor(title: string, subtitle: string, tag: string, layout: string, mascotStyle: string, link: string) {
-  return `/api/og-gif?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(subtitle)}` +
+  return `/api/og?title=${encodeURIComponent(title)}&subtitle=${encodeURIComponent(subtitle)}` +
     `&tag=${encodeURIComponent(tag)}&layout=${layout}&style=${mascotStyle}&link=${encodeURIComponent(link)}`;
 }
 
@@ -247,10 +247,6 @@ export default function Home() {
       {!batchMode && texts && (
         <div style={{ marginTop: 32 }}>
           <img src={imgUrl} alt="preview" style={{ width: "100%", borderRadius: 10, border: "1px solid #334155" }} />
-          <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
-            This animated version posts to Discord, Telegram and Mastodon. Bluesky doesn't support
-            animated GIFs yet, so it receives a static image automatically.
-          </p>
           <button style={{ ...btnGhost, marginTop: 14 }} onClick={generate} disabled={!!loading}>
             {loading === "gen" ? "Writing..." : "🔁 Regenerate wording"}
           </button>
