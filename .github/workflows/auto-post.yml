@@ -1,0 +1,29 @@
+name: Auto post (every 30 minutes)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "Dry run (generate only, do not post)"
+        type: boolean
+        default: true
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /api/auto-post
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          AUTO_POST_SECRET: ${{ secrets.AUTO_POST_SECRET }}
+          DRY: ${{ github.event.inputs.dry }}
+        run: |
+          URL="${APP_URL%/}/api/auto-post"
+          if [ "$DRY" = "true" ]; then URL="$URL?dry=1"; fi
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-delay 10 --max-time 120 \
+            -H "Authorization: Bearer $AUTO_POST_SECRET" \
+            "$URL"
