@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 const PLATFORMS = ["mastodon", "bluesky", "discord", "telegram"] as const;
 type Platform = (typeof PLATFORMS)[number];
 const LIMITS: Record<Platform, number> = { bluesky: 300, mastodon: 500, discord: 2000, telegram: 1024 };
+// Character limits shown next to each Buffer channel caption.
+const BUFFER_LIMITS: Record<string, number> = { twitter: 280, instagram: 2200, threads: 500, linkedin: 3000 };
 const LANGUAGES = ["English", "Hindi", "Spanish", "French", "German", "Portuguese", "Japanese", "Arabic"];
 const LAYOUTS = [
   { id: "classic", label: "Classic (text left, logo right)" },
@@ -87,6 +89,18 @@ export default function Home() {
   });
   const toggleBuffer = (id: string) => setBufferSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
+  // Per-channel captions (single-post mode): starts from the generated text, editable for each channel.
+  const [bufferTexts, setBufferTexts] = useState<Record<string, string>>({});
+  const [scheduleAt, setScheduleAt] = useState(""); // value of the datetime-local box (your local time)
+  const defaultBufferText = (service: string) => (!texts ? "" : service === "twitter" ? texts.bluesky : texts.mastodon);
+  const bufferCaption = (c: { id: string; service: string }) => bufferTexts[c.id] ?? defaultBufferText(c.service);
+  const captionsForSelected = () => {
+    const out: Record<string, string> = {};
+    for (const id of bufferSelected) { const c = bufferChannels.find((x) => x.id === id); if (c) out[id] = bufferCaption(c); }
+    return out;
+  };
+  const dueAtIso = () => (scheduleAt ? new Date(scheduleAt).toISOString() : undefined);
+
   const imgTitle = topic || "Vasukii";
   const imgSubtitle = details.slice(0, 100);
   const imgUrl = imageUrlFor(imgTitle, imgSubtitle, hashtags, layout, mascotStyle, link);
@@ -103,17 +117,20 @@ export default function Home() {
 
   async function generate() {
     setLoading("gen"); setError(""); setResults(null);
-    try { setTexts(await callGenerate(topic)); } catch (e: any) { setError(e.message); }
+    try { setTexts(await callGenerate(topic)); setBufferTexts({}); } catch (e: any) { setError(e.message); }
     setLoading("");
   }
 
   async function post() {
     if (!texts) return;
+    if (scheduleAt && bufferSelected.length && new Date(scheduleAt).getTime() < Date.now() + 60_000) {
+      setError("Pick a schedule time at least a minute in the future (or clear it)."); return;
+    }
     setLoading("post"); setError("");
     try {
       const r = await fetch("/api/post", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: [...selected, ...bufferKeys()], texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, layout, style: mascotStyle, link } }),
+        body: JSON.stringify({ platforms: [...selected, ...bufferKeys()], bufferTexts: captionsForSelected(), bufferDueAt: dueAtIso(), texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, layout, style: mascotStyle, link } }),
       });
       setResults(await r.json());
     } catch (e: any) { setError(e.message); }
@@ -321,6 +338,34 @@ export default function Home() {
               </div>
             </div>
           ))}
+
+          {bufferSelected.length > 0 && (
+            <div style={{ marginTop: 18, padding: 14, border: "1px solid #334155", borderRadius: 10 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Buffer captions (edit one per channel)</div>
+              {bufferSelected.map((id) => {
+                const c = bufferChannels.find((x) => x.id === id);
+                if (!c) return null;
+                const cap = bufferCaption(c);
+                const lim = BUFFER_LIMITS[c.service];
+                return (
+                  <div key={id}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, textTransform: "capitalize" }}>
+                      {c.service} - {c.name}
+                      {lim && <span style={{ marginLeft: "auto", fontWeight: 400, fontSize: 12, color: cap.length > lim ? "#f87171" : "#64748b" }}>{cap.length}/{lim}</span>}
+                    </label>
+                    <textarea style={{ ...box, marginBottom: 12 }} rows={3} value={cap}
+                      onChange={(e) => setBufferTexts({ ...bufferTexts, [id]: e.target.value })} />
+                  </div>
+                );
+              })}
+              <label style={{ fontWeight: 700, fontSize: 13 }}>Schedule Buffer posts (optional, your local time)</label>
+              <input type="datetime-local" style={box} value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: -8 }}>
+                Leave empty to use your Buffer queue. Only Buffer channels are scheduled - Discord, Telegram, Mastodon and Bluesky still post right away.
+                {scheduleAt && <> <button style={btnSmall} onClick={() => setScheduleAt("")}>Clear time</button></>}
+              </div>
+            </div>
+          )}
 
           <button style={{ ...btn, marginTop: 18, opacity: !(selected.length + bufferSelected.length) || loading ? 0.6 : 1 }}
             onClick={post} disabled={!(selected.length + bufferSelected.length) || !!loading}>

@@ -58,6 +58,12 @@ Instead of building each network's own API, the app can publish through your Buf
 6. Optional, for automatic posting: set `BUFFER_AUTO_CHANNELS=twitter:CHANNEL_ID,instagram:CHANNEL_ID`
    (get the IDs from the box above or Buffer's API) and `/api/auto-post` will queue to those too.
 
+**Per-channel captions and scheduling (single-post mode):** once you tick Buffer channels, a box appears with
+one editable caption per channel (X starts from the short text, with a 280 counter; Instagram and the rest from
+the longer one) and an optional "Schedule" date/time. A scheduled time applies to the Buffer channels only and
+overrides the queue. Scheduled posts still count toward the free plan's 10-per-channel limit. Batch mode keeps
+the automatic captions and queue.
+
 **Staying inside Buffer's free API limits** (100 requests / 15 min, 250 / day, 3,000 / 30 days): the channel
 list is cached (6h on the server, 12h in your browser, "Refresh channels" button to update), each post to a
 Buffer channel costs 1 request, and auto-post only uses Buffer every 16th run (3 times a day) - change this

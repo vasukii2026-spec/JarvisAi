@@ -52,7 +52,7 @@ export async function listBufferChannels(force = false): Promise<BufferChannel[]
 // Default: adds the post to the channel's Buffer queue (goes out at the next posting slot).
 // Set BUFFER_MODE=shareNow in your env to publish immediately instead.
 // Allowed: addToQueue | shareNow | shareNext
-export async function postBuffer(channelId: string, service: string, text: string, imageUrl: string) {
+export async function postBuffer(channelId: string, service: string, text: string, imageUrl: string, dueAt?: string) {
   const input: Record<string, unknown> = {
     text,
     channelId,
@@ -60,6 +60,8 @@ export async function postBuffer(channelId: string, service: string, text: strin
     mode: ["addToQueue", "shareNow", "shareNext"].includes(process.env.BUFFER_MODE || "") ? process.env.BUFFER_MODE : "addToQueue",
     assets: [{ image: { url: imageUrl } }],
   };
+  // Optional exact time (ISO 8601, UTC). When given, it overrides the queue / BUFFER_MODE.
+  if (dueAt) { input.mode = "customScheduled"; input.dueAt = dueAt; }
   // Instagram requires its own metadata block.
   if (service === "instagram") input.metadata = { instagram: { type: "post", shouldShareToFeed: true } };
 
@@ -73,6 +75,6 @@ export async function postBuffer(channelId: string, service: string, text: strin
     { input }
   );
   const res = d.createPost;
-  if (res?.post?.id) return input.mode === "shareNow" ? "Sent to Buffer (publishing now)" : "Queued in Buffer";
+  if (res?.post?.id) return input.mode === "customScheduled" ? "Scheduled in Buffer" : input.mode === "shareNow" ? "Sent to Buffer (publishing now)" : "Queued in Buffer";
   throw new Error(res?.message || "Buffer did not create the post");
 }

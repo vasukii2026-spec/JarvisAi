@@ -11,7 +11,9 @@ export function buildImageUrl(origin: string, image: PostImage) {
     `&link=${encodeURIComponent(image.link || "")}`;
 }
 
-export async function postToAll(origin: string, platforms: string[], texts: PostTexts, image: PostImage) {
+export type BufferOpts = { bufferTexts?: Record<string, string>; dueAt?: string };
+
+export async function postToAll(origin: string, platforms: string[], texts: PostTexts, image: PostImage, opts: BufferOpts = {}) {
   const imgUrl = buildImageUrl(origin, image);
   const results: Record<string, string> = {};
   await Promise.all(
@@ -25,8 +27,9 @@ export async function postToAll(origin: string, platforms: string[], texts: Post
           // format: buffer:<service>:<channelId>
           const [, service, channelId] = p.split(":");
           // X gets the short (<=260 char) version; every other network gets the longer one.
-          const text = service === "twitter" ? texts.bluesky || "" : texts.mastodon || "";
-          results[`buffer-${service}-${channelId.slice(-4)}`] = await postBuffer(channelId, service, text, imgUrl);
+          // A caption edited per channel on the page wins; otherwise fall back to the generated text.
+          const text = opts.bufferTexts?.[channelId] ?? (service === "twitter" ? texts.bluesky || "" : texts.mastodon || "");
+          results[`buffer-${service}-${channelId.slice(-4)}`] = await postBuffer(channelId, service, text, imgUrl, opts.dueAt);
         }
         else results[p] = "Failed: unknown platform";
       } catch (e: any) {
