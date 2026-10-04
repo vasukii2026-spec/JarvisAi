@@ -30,7 +30,9 @@ export async function GET(req: Request) {
     }
 
     const origin = new URL(req.url).origin;
-    const results = await postToAll(origin, ["discord", "telegram", "mastodon", "bluesky"], texts, image);
+    // Optional: BUFFER_AUTO_CHANNELS="twitter:<id>,instagram:<id>" also queues these in Buffer.
+    const bufferTargets = (process.env.BUFFER_AUTO_CHANNELS || "").split(",").map((x) => x.trim()).filter(Boolean).map((x) => `buffer:${x}`);
+    const results = await postToAll(origin, ["discord", "telegram", "mastodon", "bluesky", ...bufferTargets], texts, image);
     return Response.json({ topic, results });
   } catch (e: any) {
     return Response.json({ error: e.message }, { status: 500 });

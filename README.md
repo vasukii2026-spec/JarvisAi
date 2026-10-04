@@ -43,6 +43,23 @@ for the image), you review and edit, then approve which platforms to post to.
 browser's address bar before touching Vercel — e.g. `https://api.telegram.org/bot<token>/getMe`
 or `https://<your-mastodon-base>/api/v2/media` — this never exposes anything to anyone but you.
 
+## Post to X, Instagram, LinkedIn... through Buffer
+
+Instead of building each network's own API, the app can publish through your Buffer account.
+
+1. In Buffer, connect your channels (X, Instagram, LinkedIn, Facebook, Threads...). Instagram must be a
+   Business/Creator account.
+2. Create an API key in Buffer (only the organization owner can). API access is on every plan, including free.
+3. Add `BUFFER_API_KEY` to `.env.local` and to Vercel's Environment Variables, then redeploy.
+4. Open the app: a "Also post via Buffer" box lists your connected channels. Tick the ones you want.
+5. Buffer posts are **added to your Buffer queue** and go out at the channel's next posting slot (set your
+   posting schedule inside Buffer). X gets the short version of the text; the other networks get the longer one.
+6. Optional, for automatic posting: set `BUFFER_AUTO_CHANNELS=twitter:CHANNEL_ID,instagram:CHANNEL_ID`
+   (get the IDs from the box above or Buffer's API) and `/api/auto-post` will queue to those too.
+
+Notes: this uses Buffer's newer GraphQL API (their old REST API shuts down on 1 Feb 2027). The image link
+(`/api/og`) must stay public and permanent, because Buffer fetches it when the post goes out.
+
 ## Password protection
 
 Set `APP_PASSWORD` in Vercel's Environment Variables to any password you choose. Once set, your

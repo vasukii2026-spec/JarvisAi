@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const PLATFORMS = ["mastodon", "bluesky", "discord", "telegram"] as const;
 type Platform = (typeof PLATFORMS)[number];
@@ -54,6 +54,22 @@ export default function Home() {
   const [batch, setBatch] = useState<{ topic: string; texts: Texts; selected: Platform[]; results: Record<string, string> | null; loading: boolean }[]>([]);
   const [batchGenerating, setBatchGenerating] = useState(false);
 
+  // Buffer channels (X, Instagram, ...) - loaded from your Buffer account if BUFFER_API_KEY is set
+  const [bufferChannels, setBufferChannels] = useState<{ id: string; name: string; service: string }[]>([]);
+  const [bufferSelected, setBufferSelected] = useState<string[]>([]);
+  const [bufferError, setBufferError] = useState("");
+  useEffect(() => {
+    fetch("/api/buffer/channels").then((r) => r.json()).then((d) => {
+      if (Array.isArray(d.channels)) setBufferChannels(d.channels);
+      if (d.error) setBufferError(d.error);
+    }).catch(() => {});
+  }, []);
+  const bufferKeys = () => bufferSelected.map((id) => {
+    const c = bufferChannels.find((x) => x.id === id)!;
+    return `buffer:${c.service}:${c.id}`;
+  });
+  const toggleBuffer = (id: string) => setBufferSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
   const imgTitle = topic || "Vasukii";
   const imgSubtitle = details.slice(0, 100);
   const imgUrl = imageUrlFor(imgTitle, imgSubtitle, hashtags, layout, mascotStyle, link);
@@ -80,7 +96,7 @@ export default function Home() {
     try {
       const r = await fetch("/api/post", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: selected, texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, layout, style: mascotStyle, link } }),
+        body: JSON.stringify({ platforms: [...selected, ...bufferKeys()], texts, image: { title: imgTitle, subtitle: imgSubtitle, tag: hashtags, layout, style: mascotStyle, link } }),
       });
       setResults(await r.json());
     } catch (e: any) { setError(e.message); }
@@ -143,12 +159,12 @@ export default function Home() {
 
   async function postBatchItem(i: number) {
     const item = batch[i];
-    if (!item.texts || !item.selected.length) return;
+    if (!item.texts || !(item.selected.length + bufferSelected.length)) return;
     updateBatchItem(i, { loading: true });
     try {
       const r = await fetch("/api/post", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: item.selected, texts: item.texts, image: { title: item.topic, subtitle: imgSubtitle, tag: hashtags, layout, style: mascotStyle, link } }),
+        body: JSON.stringify({ platforms: [...item.selected, ...bufferKeys()], texts: item.texts, image: { title: item.topic, subtitle: imgSubtitle, tag: hashtags, layout, style: mascotStyle, link } }),
       });
       updateBatchItem(i, { results: await r.json(), loading: false });
     } catch (e: any) { updateBatchItem(i, { results: { error: e.message }, loading: false }); }
@@ -156,7 +172,7 @@ export default function Home() {
 
   async function postAllBatch() {
     for (let i = 0; i < batch.length; i++) {
-      if (batch[i].texts && batch[i].selected.length) await postBatchItem(i);
+      if (batch[i].texts && (batch[i].selected.length + bufferSelected.length)) await postBatchItem(i);
     }
   }
 
@@ -231,6 +247,23 @@ export default function Home() {
         </>
       )}
 
+      <div style={{ marginBottom: 16, padding: 14, border: "1px solid #334155", borderRadius: 10 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>Also post via Buffer (X, Instagram, LinkedIn...)</div>
+        {bufferChannels.length === 0 ? (
+          <div style={{ fontSize: 13, color: bufferError ? "#f87171" : "#64748b" }}>
+            {bufferError || "No Buffer channels found. Add BUFFER_API_KEY in your environment variables and connect channels in Buffer."}
+          </div>
+        ) : (
+          bufferChannels.map((c) => (
+            <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, textTransform: "capitalize" }}>
+              <input type="checkbox" checked={bufferSelected.includes(c.id)} onChange={() => toggleBuffer(c.id)} />
+              {c.service} - {c.name}
+            </label>
+          ))
+        )}
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>Buffer channels are added to your Buffer queue and go out at your next posting slot. X uses the short version of the text.</div>
+      </div>
+
       {!batchMode ? (
         <button style={{ ...btn, opacity: !topic || loading ? 0.6 : 1 }} onClick={generate} disabled={!topic || !!loading}>
           {loading === "gen" ? "Writing..." : "Generate paragraph + image"}
@@ -272,9 +305,9 @@ export default function Home() {
             </div>
           ))}
 
-          <button style={{ ...btn, marginTop: 18, opacity: !selected.length || loading ? 0.6 : 1 }}
-            onClick={post} disabled={!selected.length || !!loading}>
-            {loading === "post" ? "Posting..." : `✅ Approve & post to ${selected.length} platform(s)`}
+          <button style={{ ...btn, marginTop: 18, opacity: !(selected.length + bufferSelected.length) || loading ? 0.6 : 1 }}
+            onClick={post} disabled={!(selected.length + bufferSelected.length) || !!loading}>
+            {loading === "post" ? "Posting..." : `✅ Approve & post to ${selected.length + bufferSelected.length} platform(s)`}
           </button>
 
           {results && (
