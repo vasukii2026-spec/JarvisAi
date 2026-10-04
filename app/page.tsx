@@ -58,12 +58,29 @@ export default function Home() {
   const [bufferChannels, setBufferChannels] = useState<{ id: string; name: string; service: string }[]>([]);
   const [bufferSelected, setBufferSelected] = useState<string[]>([]);
   const [bufferError, setBufferError] = useState("");
-  useEffect(() => {
-    fetch("/api/buffer/channels").then((r) => r.json()).then((d) => {
-      if (Array.isArray(d.channels)) setBufferChannels(d.channels);
-      if (d.error) setBufferError(d.error);
-    }).catch(() => {});
-  }, []);
+  // Channel list is cached in the browser for 12h so opening the page doesn't spend Buffer API requests.
+  async function loadBufferChannels(force = false) {
+    try {
+      if (!force) {
+        const raw = localStorage.getItem("bufferChannels");
+        if (raw) {
+          const c = JSON.parse(raw);
+          if (Date.now() - c.at < 12 * 60 * 60 * 1000 && Array.isArray(c.channels) && c.channels.length) {
+            setBufferChannels(c.channels); return;
+          }
+        }
+      }
+    } catch {}
+    try {
+      const d = await (await fetch("/api/buffer/channels" + (force ? "?refresh=1" : ""))).json();
+      setBufferError(d.error || "");
+      if (Array.isArray(d.channels)) {
+        setBufferChannels(d.channels);
+        if (d.channels.length) { try { localStorage.setItem("bufferChannels", JSON.stringify({ at: Date.now(), channels: d.channels })); } catch {} }
+      }
+    } catch {}
+  }
+  useEffect(() => { loadBufferChannels(); }, []);
   const bufferKeys = () => bufferSelected.map((id) => {
     const c = bufferChannels.find((x) => x.id === id)!;
     return `buffer:${c.service}:${c.id}`;
@@ -261,7 +278,7 @@ export default function Home() {
             </label>
           ))
         )}
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>Buffer channels are added to your Buffer queue and go out at your next posting slot. X uses the short version of the text.</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>Buffer channels are added to your Buffer queue and go out at your next posting slot. X uses the short version of the text. <button style={btnSmall} onClick={() => loadBufferChannels(true)}>↻ Refresh channels</button></div>
       </div>
 
       {!batchMode ? (

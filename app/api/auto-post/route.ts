@@ -30,10 +30,17 @@ export async function GET(req: Request) {
     }
 
     const origin = new URL(req.url).origin;
-    // Optional: BUFFER_AUTO_CHANNELS="twitter:<id>,instagram:<id>" also queues these in Buffer.
-    const bufferTargets = (process.env.BUFFER_AUTO_CHANNELS || "").split(",").map((x) => x.trim()).filter(Boolean).map((x) => `buffer:${x}`);
+    // Optional: BUFFER_AUTO_CHANNELS="twitter:<id>,instagram:<id>" also sends these through Buffer.
+    // To protect Buffer's API limits (and the free queue of 10 posts per channel), Buffer is only used on
+    // every Nth 30-minute slot. Default 16 = 3 times a day. Set BUFFER_AUTO_EVERY_N to change it.
+    const everyN = Math.max(1, parseInt(process.env.BUFFER_AUTO_EVERY_N || "16", 10) || 16);
+    const slot = Math.floor(Date.now() / (1000 * 60 * 30));
+    const bufferThisRun = slot % everyN === 0;
+    const bufferTargets = bufferThisRun
+      ? (process.env.BUFFER_AUTO_CHANNELS || "").split(",").map((x) => x.trim()).filter(Boolean).map((x) => `buffer:${x}`)
+      : [];
     const results = await postToAll(origin, ["discord", "telegram", "mastodon", "bluesky", ...bufferTargets], texts, image);
-    return Response.json({ topic, results });
+    return Response.json({ topic, bufferThisRun, results });
   } catch (e: any) {
     return Response.json({ error: e.message }, { status: 500 });
   }

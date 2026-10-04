@@ -54,8 +54,15 @@ Instead of building each network's own API, the app can publish through your Buf
 4. Open the app: a "Also post via Buffer" box lists your connected channels. Tick the ones you want.
 5. Buffer posts are **added to your Buffer queue** and go out at the channel's next posting slot (set your
    posting schedule inside Buffer). X gets the short version of the text; the other networks get the longer one.
+   To publish immediately instead of using the queue, set `BUFFER_MODE=shareNow`.
 6. Optional, for automatic posting: set `BUFFER_AUTO_CHANNELS=twitter:CHANNEL_ID,instagram:CHANNEL_ID`
    (get the IDs from the box above or Buffer's API) and `/api/auto-post` will queue to those too.
+
+**Staying inside Buffer's free API limits** (100 requests / 15 min, 250 / day, 3,000 / 30 days): the channel
+list is cached (6h on the server, 12h in your browser, "Refresh channels" button to update), each post to a
+Buffer channel costs 1 request, and auto-post only uses Buffer every 16th run (3 times a day) - change this
+with `BUFFER_AUTO_EVERY_N`. Rough cost with 2 Buffer channels: about 6 requests a day from auto-post.
+Check your usage in Buffer's API settings page.
 
 Notes: this uses Buffer's newer GraphQL API (their old REST API shuts down on 1 Feb 2027). The image link
 (`/api/og`) must stay public and permanent, because Buffer fetches it when the post goes out.
