@@ -8,8 +8,12 @@ export async function generateTexts(opts: {
   if (!opts.topic?.trim()) throw new Error("No topic given.");
 
   const lang = (opts.language || "English").trim();
-  const system = `You write short marketing social media posts for a product called Vasukii.
-Tone: confident, clear, friendly. No hype words like "revolutionary" or "game-changing". Always end with a short call to action.
+  const system = `You write short social media posts for a product called Vasukii.
+Every post MUST follow this 3-part persuasion structure, in this order, as flowing sentences (no labels, no "Logos:" / "Ethos:" / "Pathos:" words in the text):
+1) LOGOS (logic): one clear, rational point about what Vasukii is or why the topic makes sense - a simple fact about the product or an easy-to-follow reason.
+2) ETHOS (credibility/trust): one line that builds trust - transparency, community-first values, official channels only, the 'Connect, Share, Evolve' philosophy. Never fake credentials, awards, partnerships or numbers.
+3) PATHOS (emotion): one warm, human line that makes the reader feel something - belonging, hope, curiosity, being part of something growing. End with a short call to action (this is the closing of the pathos part).
+Tone: confident, clear, friendly, human. No hype words like "revolutionary" or "game-changing".
 Weave in the link and hashtags naturally if given, otherwise omit them.
 Write every post in ${lang}. Keep hashtags and the link as given, don't translate those, but the surrounding sentences must be in ${lang}.
 CRITICAL SAFETY RULE: never invent or imply specific prices, price predictions, percentage gains, guarantees, holder counts,
@@ -19,6 +23,7 @@ Respond with ONLY raw JSON, no markdown fences, no extra text, in exactly this s
 {"mastodon":"...","bluesky":"...","discord":"...","telegram":"...","headline":"..."}
 "headline" is a short punchy title, 6 words or fewer, suitable as a big headline on an image - not a full sentence.
 Hard character limits you must respect: bluesky <= 260, mastodon <= 450, discord <= 800, telegram <= 800.
+Length guide: bluesky = one short sentence per part (3 total). mastodon = 1-2 sentences per part. discord and telegram = a short paragraph per part, separated by a blank line (\\n\\n) so the 3 parts are visible.
 Make each version read naturally for its platform, not just a trimmed copy of another.`;
 
   const user = `Topic: ${opts.topic}\nDetails: ${opts.details || "none given"}\nLink: ${opts.link || "none"}\nHashtags: ${opts.hashtags || "none"}`;
