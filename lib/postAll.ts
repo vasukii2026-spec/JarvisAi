@@ -26,9 +26,9 @@ export async function postToAll(origin: string, platforms: string[], texts: Post
         else if (p.startsWith("buffer:")) {
           // format: buffer:<service>:<channelId>
           const [, service, channelId] = p.split(":");
-          // X gets the short (<=260 char) version; every other network gets the longer one.
+          // X gets the short (<=260 char) version; LinkedIn/Facebook get the longest 3-paragraph one; others get the medium one.
           // A caption edited per channel on the page wins; otherwise fall back to the generated text.
-          const text = opts.bufferTexts?.[channelId] ?? (service === "twitter" ? texts.bluesky || "" : texts.mastodon || "");
+          const text = opts.bufferTexts?.[channelId] ?? (service === "twitter" ? texts.bluesky || "" : service === "linkedin" || service === "facebook" ? texts.discord || "" : texts.mastodon || "");
           results[`buffer-${service}-${channelId.slice(-4)}`] = await postBuffer(channelId, service, text, imgUrl, opts.dueAt);
         }
         else results[p] = "Failed: unknown platform";

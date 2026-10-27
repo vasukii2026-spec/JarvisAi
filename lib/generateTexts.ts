@@ -1,3 +1,5 @@
+const DOMAIN = "vasukii.xyz";
+
 export type GeneratedTexts = { mastodon: string; bluesky: string; discord: string; telegram: string; headline?: string };
 
 export async function generateTexts(opts: {
@@ -13,7 +15,7 @@ Every post MUST follow this 3-part persuasion structure, in this order, as flowi
 1) LOGOS (logic): one clear, rational point about what Vasukii is or why the topic makes sense - a simple fact about the product or an easy-to-follow reason.
 2) ETHOS (credibility/trust): one line that builds trust - transparency, community-first values, official channels only, the 'Connect, Share, Evolve' philosophy. Never fake credentials, awards, partnerships or numbers.
 3) PATHOS (emotion): one warm, human line that makes the reader feel something - belonging, hope, curiosity, being part of something growing. End with a short call to action (this is the closing of the pathos part).
-Tone: confident, clear, friendly, human. No hype words like "revolutionary" or "game-changing".
+DOMAIN RULE: the website vasukii.xyz MUST appear in EVERY paragraph / every part of EVERY post (written exactly as vasukii.xyz, no https://, no changes). Short posts with one paragraph must contain it at least once. Never write any other domain (never vasukii.com).\nTone: confident, clear, friendly, human. No hype words like "revolutionary" or "game-changing".
 Weave in the link and hashtags naturally if given, otherwise omit them.
 Write every post in ${lang}. Keep hashtags and the link as given, don't translate those, but the surrounding sentences must be in ${lang}.
 CRITICAL SAFETY RULE: never invent or imply specific prices, price predictions, percentage gains, guarantees, holder counts,
@@ -50,5 +52,34 @@ Make each version read naturally for its platform, not just a trimmed copy of an
   for (const k of ["mastodon", "bluesky", "discord", "telegram"]) {
     if (typeof parsed[k] !== "string" || !parsed[k].trim()) throw new Error(`Missing "${k}" in AI response`);
   }
+  // Safety net: the AI sometimes forgets. Make sure every paragraph of every post mentions the domain.
+  const limits: Record<string, number> = { bluesky: 260, mastodon: 450, discord: 800, telegram: 800 };
+  for (const k of ["mastodon", "bluesky", "discord", "telegram"]) {
+    parsed[k] = ensureDomain(parsed[k], limits[k]);
+  }
   return parsed;
+}
+
+function ensureDomain(text: string, limit: number): string {
+  const paras = text.trim().split(/\n{2,}/).map((x: string) => x.trim()).filter(Boolean);
+  const fixed = paras.map((para: string) => {
+    const withoutVasukiiCom = para.replace(/vasukii\.com/gi, DOMAIN);
+    return withoutVasukiiCom.toLowerCase().includes(DOMAIN) ? withoutVasukiiCom : `${withoutVasukiiCom} ${DOMAIN}`;
+  });
+  let out = fixed.join("\n\n");
+  // If adding the domain pushed it over the platform limit, trim the longest paragraph's words (keeping the domain).
+  while (out.length > limit) {
+    let idx = 0;
+    fixed.forEach((x: string, i: number) => { if (x.length > fixed[idx].length) idx = i; });
+    const words = fixed[idx].split(" ");
+    if (words.length < 4) break;
+    const di = words.findIndex((w: string) => w.toLowerCase().includes(DOMAIN));
+    // drop the last word that isn't the domain
+    let drop = words.length - 1;
+    if (drop === di) drop--;
+    words.splice(drop, 1);
+    fixed[idx] = words.join(" ");
+    out = fixed.join("\n\n");
+  }
+  return out;
 }

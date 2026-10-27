@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const website = process.env.VASUKII_WEBSITE || "";
+  const website = process.env.VASUKII_WEBSITE || "https://vasukii.xyz";
   const hashtags = process.env.AUTO_POST_HASHTAGS || "#Vasukii";
   const topic = pickTopic();
   const layout = LAYOUTS[Math.floor(Date.now() / (1000 * 60 * 30)) % LAYOUTS.length];

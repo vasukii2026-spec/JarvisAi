@@ -27,10 +27,11 @@ async function gql(query: string, variables?: Record<string, unknown>) {
 // To stay far below that, the channel list is cached in memory for 6 hours (and the browser caches it too),
 // and BUFFER_ORGANIZATION_ID (optional) skips the organization lookup entirely.
 const CACHE_MS = 6 * 60 * 60 * 1000;
-let cache: { at: number; channels: BufferChannel[] } | null = null;
+let cache: { at: number; key: string; channels: BufferChannel[] } | null = null;
 
 export async function listBufferChannels(force = false): Promise<BufferChannel[]> {
-  if (!force && cache && Date.now() - cache.at < CACHE_MS) return cache.channels;
+  const curKey = process.env.BUFFER_API_KEY || "";
+  if (!force && cache && cache.key === curKey && Date.now() - cache.at < CACHE_MS) return cache.channels;
   const envOrg = (process.env.BUFFER_ORGANIZATION_ID || "").trim();
   const orgList: { id: string }[] = envOrg
     ? [{ id: envOrg }]
@@ -45,7 +46,7 @@ export async function listBufferChannels(force = false): Promise<BufferChannel[]
       out.push({ id: c.id, name: c.displayName || c.name || c.service, service: c.service });
     }
   }
-  cache = { at: Date.now(), channels: out };
+  cache = { at: Date.now(), key: curKey, channels: out };
   return out;
 }
 

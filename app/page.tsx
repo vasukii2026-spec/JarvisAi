@@ -92,7 +92,7 @@ export default function Home() {
   // Per-channel captions (single-post mode): starts from the generated text, editable for each channel.
   const [bufferTexts, setBufferTexts] = useState<Record<string, string>>({});
   const [scheduleAt, setScheduleAt] = useState(""); // value of the datetime-local box (your local time)
-  const defaultBufferText = (service: string) => (!texts ? "" : service === "twitter" ? texts.bluesky : texts.mastodon);
+  const defaultBufferText = (service: string) => (!texts ? "" : service === "twitter" ? texts.bluesky : service === "linkedin" || service === "facebook" ? texts.discord : texts.mastodon);
   const bufferCaption = (c: { id: string; service: string }) => bufferTexts[c.id] ?? defaultBufferText(c.service);
   const captionsForSelected = () => {
     const out: Record<string, string> = {};
@@ -237,7 +237,7 @@ export default function Home() {
         placeholder="What it does, why it matters, who it's for..." />
 
       <label>Link (optional - also adds a scannable QR code to the image)</label>
-      <input style={box} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://vasukii.com" />
+      <input style={box} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://vasukii.xyz" />
 
       <label>Hashtags</label>
       <input style={box} value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
